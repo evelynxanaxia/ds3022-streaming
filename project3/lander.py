@@ -16,16 +16,16 @@ from datetime import datetime, timezone
 import duckdb
 from quixstreams import Application
 
-BROKER = "127.0.0.1:19092"
-TOPIC = "quakes"
+BROKER = "127.0.0.1:19092" 
+TOPIC = "coinbase_trades"  
 OUT_DIR = "data/raw"
 BATCH_SIZE = 1000
 BATCH_SECONDS = 60
 CRASH_AFTER_WRITE = "crash" in sys.argv[1:]
 
 SCHEMA = """kafka_partition INTEGER, kafka_offset BIGINT, kafka_key VARCHAR,
-    action VARCHAR, unid VARCHAR, event_time VARCHAR, mag DOUBLE, magtype VARCHAR,
-    region VARCHAR, lat DOUBLE, lon DOUBLE, depth DOUBLE, lastupdate VARCHAR,
+    action VARCHAR, msg_type VARCHAR, product_id VARCHAR, trade_id BIGINT,
+    side VARCHAR, price DOUBLE, size DOUBLE, event_time VARCHAR,
     landed_at TIMESTAMP, raw VARCHAR"""
 
 
@@ -37,29 +37,30 @@ def number(x):
 
 
 def to_row(msg):
-    """Keep the whole message (raw) plus a few columns. Never crash on bad input."""
     raw = msg.value().decode("utf8", errors="replace") if msg.value() else ""
     try:
         m = json.loads(raw)
-        p = m["data"]["properties"]
+        d = m["data"]                      # your message, inside the envelope
         action = m.get("action", "unknown")
+        if not isinstance(d, dict):
+            raise TypeError("data is not an object")
     except (ValueError, KeyError, TypeError, AttributeError):
-        m, p, action = {}, {}, "malformed"
+        d, action = {}, "malformed"
     key = msg.key().decode("utf8", errors="replace") if msg.key() else None
-    return (msg.partition(), msg.offset(), key, action, p.get("unid"), p.get("time"),
-            number(p.get("mag")), p.get("magtype"), p.get("flynn_region"),
-            number(p.get("lat")), number(p.get("lon")), number(p.get("depth")),
-            p.get("lastupdate"), datetime.now(timezone.utc).replace(tzinfo=None), raw)
-
+    return (msg.partition(), msg.offset(), key, action, d.get("type"),
+            d.get("product_id"), d.get("trade_id"), d.get("side"),
+            number(d.get("price")), number(d.get("size")), d.get("time"),
+            datetime.now(timezone.utc).replace(tzinfo=None), raw)
 
 def write_batch(rows):
     """Write one Parquet file. Write to .tmp first, then rename,
     so the flow never reads a half-written file."""
-    os.makedirs(OUT_DIR, exist_ok=True)
-    name = f"{OUT_DIR}/quakes_{datetime.now(timezone.utc):%Y%m%dT%H%M%S}_{uuid.uuid4().hex[:6]}.parquet"
+    os.makedirs(OUT_DIR, exist_ok=True)  
+    name = (f"{OUT_DIR}/coinbase_" 
+            f"{datetime.now(timezone.utc):%Y%m%dT%H%M%S}_{uuid.uuid4().hex[:6]}.parquet")
     con = duckdb.connect()  # in memory: no database file, no lock
     con.execute(f"CREATE TABLE batch ({SCHEMA})")
-    con.executemany(f"INSERT INTO batch VALUES ({', '.join(['?'] * 15)})", rows)
+    con.executemany(f"INSERT INTO batch VALUES ({', '.join(['?'] * len(rows[0]))})", rows)
     con.execute(f"COPY batch TO '{name}.tmp' (FORMAT parquet)")
     con.close()
     os.replace(f"{name}.tmp", name)
@@ -67,8 +68,8 @@ def write_batch(rows):
 
 
 def main():
-    app = Application(broker_address=BROKER, consumer_group="quakes_lander",
-                      auto_offset_reset="earliest", loglevel="WARNING")
+    app = Application(broker_address=BROKER, consumer_group="coinbase_trades_lander",
+                  auto_offset_reset="earliest", loglevel="WARNING")
     with app.get_consumer() as consumer:
         consumer.subscribe([TOPIC])
         rows, last, started = [], {}, time.monotonic()
