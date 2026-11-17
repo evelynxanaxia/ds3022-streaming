@@ -48,7 +48,7 @@ Same kafka_partition + kafka_offset. This happens if the lander crashes after wr
 - What makes two records **the same thing** (the same trade, post, aircraft position)? Same product_id + trade_id. trade_id alone is not enough because trade IDs are numbered per product. The 'last_match' messages sent right after subscribing (and again after a reconnect) repeat a trade that was already seen, so they also count as duplicates.
 - If the same thing can arrive in several versions, which one do I keep? 
 Trade messages are never updated, so all copies are identical. I keep the earliest landed copy (lowest offset) and drop the rest. Non-trade messages (type 'subscriptions') are not trades and are filtered out.
-- ## 6. Research question (draft)
+ ## 6. Research question (draft)
 - One question I could answer with time windows, a comparison, an anomaly or a join:
 Which hours of the day (UTC) carry the most traded value in USD on Coinbase, and is that value dominated by one product?
 ## 7. Self-check (checkpoint A)

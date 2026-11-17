@@ -9,19 +9,19 @@ Add to the entry at the end of every class, and whenever you stop working. Short
 - Blocked: nothing
 
 ## Session 2 · Mon 09 Nov
-- Done:
-- Raw records so far:
-- Next:
-- Blocked:
+- Done: lander (checkpoint C), cards D1, D2, D3 in README
+- Raw records so far: 63,523
+- Next: flow.py, research question
+- Blocked: nothing
 
 ## Session 3 · Thu 12 Nov
-- Done:
-- Raw records so far:
-- Next:
-- Blocked:
+- Done: Prefect flow (load_raw, stage, entities, marts, chart), sample, screenshots, chart
+- Raw records so far: 129,410
+- Next: README, peer test
+- Blocked: nothing
 
 ## Session 4 · Mon 16 Nov
-- Done:
-- Raw records so far:
-- Next:
-- Blocked:
+- Done: chaos cards D1, D2, D3 in README, README completed, check_project.py
+- Peer test: unable to do
+- Raw records so far: 138,590
+- Blocked: nothing
